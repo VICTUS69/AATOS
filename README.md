@@ -25,6 +25,7 @@ python main.py
 python main.py --llm
 
 ## 🚀 Example Output
+```
 North: 🚗 12 cars → Green 35s
 North: 🟡 Yellow 2s
 North: 🔴 Red
