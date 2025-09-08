@@ -19,10 +19,15 @@ pip install -r requirements.txt
 
 ## ▶️ Usage
 # Run rule-based system:
+```
 python main.py
+```
 
 # Run with LLM decisions (requires OpenAI API key):
+```
 python main.py --llm
+```
+
 
 ## 🚀 Example Output
 ```
