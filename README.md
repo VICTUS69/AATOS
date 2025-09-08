@@ -11,3 +11,33 @@ AATOS is a **smart traffic management system** that uses **YOLOv11 for car detec
 ---
 
 ## 📂 Project Structure
+AATOS/
+│── traffic_yolo.py # YOLOv11 car detection + counting
+│── traffic_controller.py # Junction logic
+│── traffic_llm.py # LLM-based decision making (optional)
+│── main.py # Entry point
+│── requirements.txt # Dependencies
+│── README.md # Documentation
+---
+
+## ⚡ Installation
+```bash
+git clone https://github.com/yourusername/AATOS.git
+cd AATOS
+pip install -r requirements.txt
+
+
+## ▶️ Usage
+# Run rule-based system:
+python main.py
+
+# Run with LLM decisions (requires OpenAI API key):
+python main.py --llm
+
+## 🚀 Example Output
+North: 🚗 12 cars → Green 35s
+North: 🟡 Yellow 2s
+North: 🔴 Red
+
+East: 🚗 3 cars → Green 10s
+...
