@@ -12,10 +12,11 @@ AATOS is a **smart traffic management system** that uses **YOLOv11 for car detec
 
 
 ## ⚡ Installation
+```
 git clone https://github.com/yourusername/AATOS.git
 cd AATOS
 pip install -r requirements.txt
-
+```
 
 ## ▶️ Usage
 # Run rule-based system:
