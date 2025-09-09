@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AATOS Dashboard (Local)</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body{font-family: Arial, Helvetica, sans-serif; margin:18px; background:#fbfbfb}
+    h1 {margin-bottom:6px}
+    .row {display:flex; gap:20px; align-items:flex-start}
+    .card{background:#fff; border:1px solid #e6e6e6; padding:12px; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+    table{border-collapse: collapse; width:100%}
+    th, td{border:1px solid #eee; padding:6px; text-align:left; font-size:13px}
+    th{background:#f7f7f7}
+    .small{font-size:12px; color:#666}
+    .alert{color:#b40000; font-weight:700}
+    #controls{margin-bottom:10px}
+    select{padding:6px}
+  </style>
+</head>
+<body>
+  <h1>AATOS Dashboard — Local</h1>
+  <p class="small">This dashboard reads your traffic CSV and shows aggregated stats + suggested green times. If no dataset is found, see the run guide.</p>
+
+  <div id="no-data" style="display:none" class="card alert">
+    Dataset not found. Please place your CSV in the repo under <code>data/Banglore_traffic_Dataset.csv</code> or set env var <code>DATA_CSV</code>.
+  </div>
+
+  <div class="row">
+    <div style="flex:1" class="card">
+      <h3>Top congested intersections</h3>
+      <div id="top-list">Loading…</div>
+    </div>
+
+    <div style="flex:2" class="card">
+      <div id="controls">
+        <label for="locSelect">Select location for time-series:</label>
+        <select id="locSelect"></select>
+        <button onclick="refresh()">Refresh</button>
+      </div>
+      <canvas id="tsChart" height="120"></canvas>
+    </div>
+  </div>
+
+  <div style="margin-top:18px" class="card">
+    <h3>Full summary (top 50)</h3>
+    <div id="summaryTable">Loading…</div>
+  </div>
+
+<script>
+async function fetchSummary(){
+  try {
+    const res = await axios.get('/api/summary');
+    if(res.status !== 200){
+      document.getElementById('no-data').style.display = 'block';
+      document.getElementById('summaryTable').innerHTML = '<p class="small">No data available</p>';
+      return;
+    }
+    const rows = res.data;
+    if(!rows || rows.length===0){
+      document.getElementById('summaryTable').innerHTML = '<p class="small">No rows in dataset</p>';
+      return;
+    }
+    document.getElementById('no-data').style.display = 'none';
+
+    // top congested list
+    const top = rows.slice(0,8);
+    let topHtml = '<ol>';
+    top.forEach(r => {
+      topHtml += `<li><strong>${r.location}</strong> — congestion ${r.avg_congestion}% — suggested (NS:${r.ns_green_s}s / EW:${r.ew_green_s}s) ${r.alert?'<span class="alert"> | ALERT: '+r.alert+'</span>':''}</li>`;
+    });
+    topHtml += '</ol>';
+    document.getElementById('top-list').innerHTML = topHtml;
+
+    // summary table
+    let table = '<table><thead><tr>';
+    Object.keys(rows[0]).forEach(k => table += `<th>${k}</th>`);
+    table += '</tr></thead><tbody>';
+    rows.forEach(r => {
+      table += '<tr>';
+      Object.values(r).forEach(v => table += `<td>${v===null?'':v}</td>`);
+      table += '</tr>';
+    });
+    table += '</tbody></table>';
+    document.getElementById('summaryTable').innerHTML = table;
+
+    // populate select
+    const sel = document.getElementById('locSelect');
+    sel.innerHTML = '';
+    rows.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.location;
+      opt.text = r.location;
+      sel.appendChild(opt);
+    });
+    sel.onchange = loadLocationTimeseries;
+    // auto-load first
+    if(rows.length>0) loadLocationTimeseries();
+  } catch (err){
+    console.error(err);
+    document.getElementById('no-data').style.display = 'block';
+    document.getElementById('summaryTable').innerHTML = '<p class="small">Failed to load summary</p>';
+  }
+}
+
+async function loadLocationTimeseries(){
+  const loc = document.getElementById('locSelect').value;
+  if(!loc) return;
+  try {
+    const res = await axios.get('/api/location', { params: { name: loc }});
+    if(res.status !== 200){
+      document.getElementById('tsChart').style.display = 'none';
+      return;
+    }
+    const rows = res.data;
+    const labels = rows.map(r => r.date || '').slice(-100);
+    const vols = rows.map(r => r.traffic_volume || 0).slice(-100);
+    const speeds = rows.map(r => r.avg_speed || 0).slice(-100);
+    renderChart(labels, vols, speeds);
+  } catch (err){
+    console.error(err);
+  }
+}
+
+let chart = null;
+function renderChart(labels, vols, speeds){
+  const ctx = document.getElementById('tsChart').getContext('2d');
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'Traffic Volume', data: vols, yAxisID: 'A', tension:0.2 },
+        { label: 'Avg Speed (km/h)', data: speeds, yAxisID: 'B', tension:0.2 }
+      ]
+    },
+    options: {
+      scales: {
+        A: { type: 'linear', position:'left', title: {display:true, text:'Volume'} },
+        B: { type: 'linear', position:'right', title: {display:true, text:'Speed (km/h)'} }
+      },
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+}
+
+function refresh(){ fetchSummary(); }
+
+fetchSummary();
+</script>
+</body>
+</html>
